@@ -1,95 +1,112 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+
+import { useState, useEffect } from "react";
+import axios from "axios";
+
+interface User {
+  id: number;
+  username: string;
+  email: string;
+}
 
 export default function Home() {
+  const [users, setUsers] = useState<User[]>([]);
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get<User[]>("/api/users");
+      setUsers(response.data);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  };
+
+  const addUser = async () => {
+    try {
+      await axios.post("/api/users", { username, email });
+      setUsername("");
+      setEmail("");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error adding user:", error);
+    }
+  };
+
+  const deleteUser = async (id: number) => {
+    try {
+      await axios.delete("/api/users", { data: { userId: id } });
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
+  };
+
+  const editUser = async () => {
+    if (editingUser) {
+      try {
+        await axios.put("/api/users", {
+          id: editingUser.id,
+          updatedUsername: username,
+          updatedEmail: email,
+        });
+        setUsername("");
+        setEmail("");
+        setEditingUser(null);
+        fetchUsers();
+      } catch (error) {
+        console.error("Error updating user:", error);
+      }
+    } else {
+      console.error("No user is currently being edited.");
+    }
+  };
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>src/app/page.tsx</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+    <div>
+      <h1>User Management</h1>
+      <div>
+        <input
+          type="text"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
+        <input
+          type="email"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        {editingUser ? (
+          <button onClick={editUser}>Update User</button>
+        ) : (
+          <button onClick={addUser}>Add User</button>
+        )}
       </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+      <ul>
+        {users.map((user) => (
+          <li key={user.id}>
+            {user.username} - {user.email}
+            <button onClick={() => deleteUser(user.id)}>Delete</button>
+            <button
+              onClick={() => {
+                setEditingUser(user);
+                setUsername(user.username);
+                setEmail(user.email);
+              }}
+            >
+              Edit
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
